@@ -448,6 +448,41 @@ public class Archive implements Closeable {
 			}
 		}
 	}
+	
+	/**
+         * Returns an {@link InputStream} that will allow to read the file and
+         * stream it. Please note that this method will create a new Thread and an a
+         * pair of Pipe streams.
+         * 
+         * @param header
+         *            the header to be extracted
+         * @throws RarException
+         * @throws IOException
+         *             if any IO error occur
+         */
+        public InputStream getInputStream(final FileHeader hd) throws RarException,
+                        IOException {
+                final PipedInputStream in = new PipedInputStream(32 * 1024);
+                final PipedOutputStream out = new PipedOutputStream(in);
+
+                // creates a new thread that will write data to the pipe. Data will be
+                // available in another InputStream, connected to the OutputStream.
+                new Thread(new Runnable() {
+                        public void run() {
+                                try {
+                                        extractFile(hd, out);
+                                } catch (RarException e) {
+                                } finally {
+                                        try {
+                                                out.close();
+                                        } catch (IOException e) {
+                                        }
+                                }
+                        }
+                }).start();
+
+                return in;
+        }	
 
 	private void doExtractFile(FileHeader hd, OutputStream os) throws RarException, IOException {
 		dataIO.init(os);
